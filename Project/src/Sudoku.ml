@@ -18,7 +18,7 @@ let print_sudoku s =
       print_newline();
     done;
     for i=0 to 8 do
-      print_string "--";
+      print_string "---";
     done;
     print_newline();
   done;
