@@ -1,9 +1,10 @@
 SOURCES = Sudoku.ml
 RESULT = Sudoku
 PACKS = glpk
-LIB = /usr/lib/ocmal
 
 all:
-	ocamlc -I $(LIB) glpk.cma $(SOURCES) -o $(RESULT)
+	ocamlc glpk.cma $(SOURCES) -o $(RESULT)
+	./Sudoku
 
--include OCamlMakefile
+clean:
+	rm *.cmi *.cmo $(RESULT)

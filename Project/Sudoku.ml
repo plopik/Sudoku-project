@@ -1,5 +1,47 @@
 open Glpk
 
+let ($) tab (i,j,k) = 
+  assert (i<9 && i>=0 && j<9 && j>=0 &&  k<9 && k>=0 && Array.length tab = 729);
+  tab.(i*9+j+9*9*k)
+
+let set tab i j k value = 
+  assert (i<9 && i>=0 && j<9 && j>=0 &&  k<9 && k>=0 && Array.length tab = 729);
+  tab.(i*9+j+9*9*k)<-value
+
+let print_sudoku s = 
+  for k=0 to 8 do
+    for j = 0 to 8 do
+      for i = 0 to 8 do
+	print_float (s$(i,j,k));
+	print_string " ";
+      done;
+      print_newline();
+    done;
+    for i=0 to 8 do
+      print_string "--";
+    done;
+    print_newline();
+  done;
+  print_newline()
+
+
+let line_constr i k =
+  assert (i<9 && i>=0 && k<9 && k>=0);
+  Array.init 729 (fun x -> if ((x mod 81) mod 9  = i && x/81 = k) then 1.0 else 0.0)
+
+let column_constr j k = 
+  assert (j<9 && j>=0 && k<9 && k>=0);
+  Array.init 729 (fun x -> if ((x mod 81)/9  = j && x/81 = k) then 1.0 else 0.0)
+
+let square_constr n k = 
+  assert (n<9 && n>=0 && k<9 && k>=0);
+  Array.init 729 (fun x -> if (((x mod 9)/3 = n/3) && (((x mod 81)/9)/3 = n mod 3) && x/81 = k) then 1.0 else 0.0)
+
+
+let () = 
+  print_sudoku (square_constr 4 8)
+
+
 let make_ukp z c b =
   let n = Array.length z in
   let bbounds = Array.make 1 (0., b) in
