@@ -78,10 +78,6 @@ let constr =
 		    )
 
 
-
-let () = 
-  print_sudoku (read_sudoku "test.su")
-
 let make_sudoku_pb filename = 
   let bbounds = Array.make (4*81) (1.,1.)
   and xbounds = Array.make 729 (0.,1.) 
@@ -94,7 +90,7 @@ let make_sudoku_pb filename =
     slp
 
 let () =
-  let slp = make_sudoku_pb "test.sudoku" in
+  let slp = make_sudoku_pb "test.su" in
     simplex slp;
     branch_and_bound slp;
     let prim = get_col_primals slp in
