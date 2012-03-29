@@ -78,7 +78,7 @@ let constr =
 		    )
 
 
-let make_sudoku_pb filename = 
+let make_2EZ_sudoku_pb filename = 
   let bbounds = Array.make (4*81) (1.,1.)
   and xbounds = Array.make 729 (0.,1.) 
   and y = read_sudoku filename in
@@ -89,8 +89,23 @@ let make_sudoku_pb filename =
     use_presolver slp true;
     slp
 
+let init_sudoku filename = 
+  let bbounds = Array.make (4*81) (1.,1.)
+  and xbounds = Array.make 729 (0.,1.) 
+  and y = read_sudoku filename in
+  let slp = make_problem Maximize y constr bbounds xbounds in
+    slp
+
+let rec solve_sudoku_pb slp =
+  simplex slp;
+  let prim = get_col_primals slp in
+    Array.mapi (fun x i -> (abs(x-0.5),i)) prim;
+    Array.sort (fun (a,b) (c,d) -> if a=c then 0 else if a<b then 1 else -1) prim;
+    for i=0 to Array.length prim do
+      
+
 let () =
-  let slp = make_sudoku_pb "test.su" in
+  let slp = make_2EZ_sudoku_pb "test.su" in
     simplex slp;
     branch_and_bound slp;
     let prim = get_col_primals slp in

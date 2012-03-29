@@ -12,7 +12,7 @@ let print_sudoku s =
   for k=0 to 8 do
     for j = 0 to 8 do
       for i = 0 to 8 do
-	print_float (if (s$(i,j,k)<0.00000000001) then 0. else (s$(i,j,k)));
+	print_float (s$(i,j,k));
 	print_string " ";
       done;
       print_newline();
