@@ -137,9 +137,9 @@ let rec solve_sudoku_pb slp matrix =
   print_newline();
   simplex slp;
   let prim = get_col_primals slp in
-    write_sudoku stdout prim;    
-    print_sudoku prim;
-    print_newline();
+(*    write_sudoku stdout prim;    *)
+(*    print_sudoku prim;*)
+(*    print_newline();*)
     if (solved prim) 
     then raise (Solution prim)
     else
@@ -162,7 +162,7 @@ let rec solve_sudoku_pb slp matrix =
 		  begin
 		    try
 		      simplex slp;
-		      if (get_obj_val slp <30.) then raise No_primal_feasible_solution;
+		      if (get_obj_val slp <27.) then raise No_primal_feasible_solution;
 (*		      print_float (get_obj_val slp);
 		      print_newline();*)
 		    with 
@@ -172,7 +172,7 @@ let rec solve_sudoku_pb slp matrix =
 		  begin
 		    try
 		      simplex slp;
-		      if (get_obj_val slp <30.) then raise No_primal_feasible_solution;
+		      if (get_obj_val slp <27.) then raise No_primal_feasible_solution;
 (*		      print_float (get_obj_val slp);
 		      print_newline();*)
 		    with 
@@ -200,11 +200,79 @@ let rec solve_sudoku_pb slp matrix =
       write_sudoku stdout prim
 *)
 
+exception Solcomb
+
+let read_sudoku_comb filename = 
+  let in_chan = open_in filename 
+  and y = Array.make 81 0 in
+    for i=0 to 8 do
+      for j=0 to 8 do
+	Scanf.fscanf in_chan "%c " (fun c -> let k = int_of_char c in if k <> 42 then y.(j+9*i)<-(k-48))
+      done;
+    done;
+    y
+
+let write_sudoku_comb out_chan s = 
+  for i=0 to 8 do
+    for j=0 to 8 do
+      Printf.fprintf out_chan "%i " s.(j+9*i);
+    done;
+    Printf.fprintf out_chan "\n";
+  done
+
+
+let case_vide s = 
+  let i = ref 0 and found = ref false in
+    while (not(!found) && !i<81) do
+      if (s.(!i) = 0)
+      then found := true
+      else incr i
+    done;
+    if (!found) 
+    then !i
+    else raise Solcomb
+
+let test_num s n i =
+  let found = ref true in
+    for j = 0 to 80 do
+      if (((j mod 9) = (n mod 9)) || (j/9 = n/9) || ((j/27 = n/27) && ((j mod 9)/3 = (n mod 9)/3)))
+      then (found := (s.(j) <> i) && !found)
+    done;
+    !found
+
+let possible_num s n = 
+  let l = ref [] in
+    for i=1 to 9 do
+      if test_num s n i 
+      then l := i::!l
+    done;
+    print_string "longueur de l : ";
+    print_int (List.length !l);
+    print_newline();
+    !l    
+
+let rec sud_comb s = 
+  let n = case_vide s in
+  let l = possible_num s n in
+    teste n s l 
+and teste n s l = match l with
+  | [] -> s.(n)<-0;
+  |x::m -> s.(n)<-x; sud_comb s; teste n s m
+
+
+
 let () =
   let slp = init_sudoku "test.su" in
     try
       solve_sudoku_pb slp constr
     with
 	Solution(prim) ->
-	  print_sudoku prim;
-	  write_sudoku stdout prim
+(*	  print_sudoku prim;*)
+	  write_sudoku stdout prim;
+	  let y = read_sudoku_comb "test.su" in
+	    try
+	      sud_comb y;
+	      print_string "lolilolilol\n";
+	      write_sudoku_comb stdout y
+	    with
+		Solcomb -> write_sudoku_comb stdout y
