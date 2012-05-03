@@ -44,19 +44,20 @@ let case_constr i j =
 
 let read_sudoku filename = 
   let in_chan = open_in filename 
-  and y = Array.make 729 0. in
+  and y = Array.make 729 0. 
+  and g = ref 0. in
     for j=0 to 8 do
       for i=0 to 8 do
-	Scanf.fscanf in_chan "%c " (fun c -> let k = int_of_char c in if k <> 42 then set y i j (k-49) 1.)
+	Scanf.fscanf in_chan "%c " (fun c -> let k = int_of_char c in if k <> 42 then (set y i j (k-49) 1.;g:= !g +. 1.))
       done;
     done;
-    y
+    (y,!g)
 
 let unique_number_case s i j = 
   let k = ref (-1) 
   and c = ref 0 in
     for k' = 0 to 8 do
-      if s$(i,j,k')=1. 
+      if s$(i,j,k')=1.
       then (k := k';incr c)
     done;
 (*    assert (!k>=0 && !k<9 && !c=1);*)
@@ -103,7 +104,7 @@ let add_row matrix new_row =
 let make_2EZ_sudoku_pb filename = 
   let bbounds = Array.make (4*81) (1.,1.)
   and xbounds = Array.make 729 (0.,1.) 
-  and y = read_sudoku filename in
+  and (y,_) = read_sudoku filename in
   let slp = make_problem Maximize y constr bbounds xbounds in
     set_class slp Mixed_integer_prog;
     for i=0 to 728 do set_col_kind slp i Integer_var done;
@@ -114,11 +115,13 @@ let make_2EZ_sudoku_pb filename =
 let init_sudoku filename = 
   let bbounds = Array.make (4*81) (1.,1.)
   and xbounds = Array.make 729 (0.,1.) 
-  and y = read_sudoku filename in
+  and (y,g) = read_sudoku filename in
   let slp = make_problem Maximize y constr bbounds xbounds in
     set_message_level slp 1;
     use_presolver slp true;
-    slp
+    print_float g;
+    print_newline();
+    (slp,g)
 
 let solved prim = 
   let n=Array.length prim and b=ref true and i = ref 0 in
@@ -130,75 +133,99 @@ let solved prim =
     !b
 
 exception Solution of (float array)
+exception MauvaisChoix
 
-let rec solve_sudoku_pb slp matrix =
+let iii = ref 0
+
+let rec solve_sudoku_pb slp g matrix =
   print_string "Nombre de lignes : ";
   print_int ((get_num_rows slp)-324);
   print_newline();
-  simplex slp;
+  begin
+    try
+      simplex slp;  
+    with
+      |No_primal_feasible_solution -> print_string "akward MauvaisChoix";raise MauvaisChoix
+  end;
+  if (get_obj_val slp <> g)
+  then (print_float (get_obj_val slp);print_string " humhum\n";raise MauvaisChoix);
   let prim = get_col_primals slp in
-(*    write_sudoku stdout prim;    *)
-(*    print_sudoku prim;*)
-(*    print_newline();*)
+  print_float (get_obj_val slp);
+  print_newline();
+  write_sudoku stdout prim;    
+  (*print_sudoku prim;*)
+  print_newline();
     if (solved prim) 
     then raise (Solution prim)
     else
       begin 
-	let pprim = Array.mapi (fun i -> fun x -> (abs_float(x -. 0.5),i)) prim in
+	let pprim = Array.mapi (fun i -> fun x -> (abs_float(x -. 0.5),(prim.(i),i))) prim in
 	  Array.sort (fun (a,b) (c,d) -> if a=c then 0 else if a<c then 1 else -1) pprim;
 	  let nmatrix=add_row matrix (Array.make 729 0.0) and n = Array.length matrix in
 	    add_rows slp 1;
 	    for i=0 to (Array.length pprim-1) do
-	      if ((fst pprim.(i)) <> 0.5)
+	      if (fst (snd (pprim.(i))) <> 0. && fst (snd (pprim.(i))) <> 1.)
 	      then
 		begin
 		  (*print_string "On teste ";
-		    print_int (snd pprim.(i));
+		    print_int (snd (snd pprim.(i)));
 		    print_newline();*)
-		let k = snd pprim.(i) in
+		let k = snd (snd pprim.(i)) in
 		  nmatrix.(n).(k)<-1.0;
 		  load_matrix slp nmatrix;
 		  set_row_bounds slp n Fixed_var 1.0 1.0;
 		  begin
 		    try
 		      simplex slp;
-		      if (get_obj_val slp <27.) then raise No_primal_feasible_solution;
-(*		      print_float (get_obj_val slp);
+		      if (get_obj_val slp -. g < 0.) then raise No_primal_feasible_solution;
+		     (* print_float (get_obj_val slp);
 		      print_newline();*)
 		    with 
-			No_primal_feasible_solution -> print_string "1 foire \n";set_row_bounds slp n Fixed_var 0.0 0.0; solve_sudoku_pb slp nmatrix
+			No_primal_feasible_solution -> print_string "1 foire \n";set_row_bounds slp n Fixed_var 0.0 0.0; solve_sudoku_pb slp g nmatrix
 		  end;
 		  set_row_bounds slp n Fixed_var 0.0 0.0;
 		  begin
 		    try
 		      simplex slp;
-		      if (get_obj_val slp <27.) then raise No_primal_feasible_solution;
-(*		      print_float (get_obj_val slp);
+		      if (get_obj_val slp -. g < 0.) then raise No_primal_feasible_solution;
+		      (*print_float (get_obj_val slp);
 		      print_newline();*)
 		    with 
-			No_primal_feasible_solution -> print_string "0 foire \n";set_row_bounds slp n Fixed_var 1.0 1.0; solve_sudoku_pb slp nmatrix
+			No_primal_feasible_solution -> print_string "0 foire \n";set_row_bounds slp n Fixed_var 1.0 1.0; solve_sudoku_pb slp g nmatrix
 		  end;
+
 		  nmatrix.(n).(k) <- 0.0
 		end
 	    done;
-	    nmatrix.(n).(snd pprim.(0))<-1.0;
-	    load_matrix slp nmatrix;
-	    set_row_bounds slp n Fixed_var 1.0 1.0;
-	    solve_sudoku_pb slp nmatrix
+	    print_string "lol personne ne foire \n";
+	    print_int (snd (snd pprim.(Array.length pprim-1)));
+	    print_newline();
+	    print_float (fst (snd pprim.(Array.length pprim-1)));
+	    print_newline();
+	    incr iii;
+	    let iiii = !iii 
+	    and newmatrix = Array.map (fun x -> Array.copy x) (Array.copy nmatrix) 
+	    and newpprim = Array.copy pprim in  
+	    try 
+	      write_cplex slp ("prevention007-"^(string_of_int iiii));
+	      nmatrix.(n).(snd (snd pprim.(Array.length pprim-1)))<-1.0;
+	      load_matrix slp nmatrix;
+	      set_row_bounds slp n Fixed_var 1.0 1.0;
+	      write_cplex slp ("uberprevention007-"^(string_of_int iiii));
+	      solve_sudoku_pb slp g nmatrix
+	    with 
+	      | MauvaisChoix -> 	      
+		print_string "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<ùmŝoghf\n";
+		newmatrix.(n).(snd (snd newpprim.(Array.length newpprim-1)))<-1.0;
+		let newslp = read_cplex ("prevention007-"^(string_of_int iiii)) in
+		set_message_level newslp 1;
+		use_presolver newslp true;
+		load_matrix newslp newmatrix;
+		set_row_bounds newslp n Fixed_var 0.0 0.0;
+		write_cplex newslp ("uberlastprevention007-"^(string_of_int iiii));
+		solve_sudoku_pb newslp g newmatrix
       end
 	
-
-(*let () =
-  let slp = make_2EZ_sudoku_pb "test.su" and s = "lol" in
-    add_rows slp 1;
-    load_matrix slp (add_row constr (new_constr 0));
-    set_row_bounds slp (4*81) Fixed_var 1.0 1.0;
-    simplex slp;
-    branch_and_bound slp;
-    let prim = get_col_primals slp in
-      print_sudoku prim;
-      write_sudoku stdout prim
-*)
 
 exception Solcomb
 
@@ -246,9 +273,6 @@ let possible_num s n =
       if test_num s n i 
       then l := i::!l
     done;
-    print_string "longueur de l : ";
-    print_int (List.length !l);
-    print_newline();
     !l    
 
 let rec sud_comb s = 
@@ -262,17 +286,27 @@ and teste n s l = match l with
 
 
 let () =
-  let slp = init_sudoku "test.su" in
+  let slp = make_2EZ_sudoku_pb "test.su" in
+    simplex slp;
+    branch_and_bound slp;
+    let prim = get_col_primals slp in
+      write_sudoku stdout prim;
+      print_newline()
+
+
+
+let () =
+  let (slp,g) = init_sudoku "test.su" in
     try
-      solve_sudoku_pb slp constr
+      solve_sudoku_pb slp g constr
     with
 	Solution(prim) ->
-(*	  print_sudoku prim;*)
 	  write_sudoku stdout prim;
-	  let y = read_sudoku_comb "test.su" in
-	    try
-	      sud_comb y;
-	      print_string "lolilolilol\n";
-	      write_sudoku_comb stdout y
-	    with
-		Solcomb -> write_sudoku_comb stdout y
+	  print_newline()
+
+let () = 
+  let y = read_sudoku_comb "test.su" in
+  try
+    sud_comb y
+  with
+      Solcomb -> write_sudoku_comb stdout y

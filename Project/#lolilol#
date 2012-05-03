@@ -1,0 +1,35 @@
+ocamlc glpk.cma src/Sudoku.ml -o Sudoku
+mv src/*.cm* bin
+./Sudoku
+Nombre de lignes : 0
+1 foire 
+Nombre de lignes : 1
+1 foire 
+Nombre de lignes : 2
+1 foire 
+Nombre de lignes : 3
+1 foire 
+Nombre de lignes : 4
+1 foire 
+Nombre de lignes : 5
+0 foire 
+Nombre de lignes : 6
+1 foire 
+Nombre de lignes : 7
+1 foire 
+Nombre de lignes : 8
+0 foire 
+Nombre de lignes : 9
+1 foire 
+Nombre de lignes : 10
+1 foire 
+Nombre de lignes : 11
+1 foire 
+Nombre de lignes : 12
+1 foire 
+Nombre de lignes : 13
+0 foire 
+Nombre de lignes : 14
+1 foire 
+Nombre de lignes : 15
+
