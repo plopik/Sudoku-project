@@ -13,4 +13,4 @@ clean:
 	rm $(BINPATH)/*.cmi $(BINPATH)/*.cmo $(RESULT)
 
 opt:
-	ocamlopt -noassert glpk.cmxa $(SRCPATH)/$(SOURCES) -o $(RESULT)
+	ocamlopt -noassert glpk.cmxa $(SRCPATH)/$(SOURCES) -o $(RESULT)opt

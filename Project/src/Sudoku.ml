@@ -108,7 +108,7 @@ let make_2EZ_sudoku_pb filename =
   let slp = make_problem Maximize y constr bbounds xbounds in
     set_class slp Mixed_integer_prog;
     for i=0 to 728 do set_col_kind slp i Integer_var done;
-    scale_problem slp;
+(*    scale_problem slp;*)
     use_presolver slp true;
     slp
 
@@ -193,7 +193,6 @@ let rec solve_sudoku_pb slp g matrix =
 		    with 
 			No_primal_feasible_solution -> print_string "0 foire \n";set_row_bounds slp n Fixed_var 1.0 1.0; solve_sudoku_pb slp g nmatrix
 		  end;
-
 		  nmatrix.(n).(k) <- 0.0
 		end
 	    done;
@@ -205,25 +204,24 @@ let rec solve_sudoku_pb slp g matrix =
 	    incr iii;
 	    let iiii = !iii 
 	    and newmatrix = Array.map (fun x -> Array.copy x) (Array.copy nmatrix) 
-	    and newpprim = Array.copy pprim in  
+	    and newpprim = Array.copy pprim in
 	    try 
 	      write_cplex slp ("prevention007-"^(string_of_int iiii));
 	      nmatrix.(n).(snd (snd pprim.(Array.length pprim-1)))<-1.0;
 	      load_matrix slp nmatrix;
-	      set_row_bounds slp n Fixed_var 1.0 1.0;
-	      write_cplex slp ("uberprevention007-"^(string_of_int iiii));
+	      set_row_bounds slp n Fixed_var 0.0 0.0;
+(*	      write_cplex slp ("uberprevention007-"^(string_of_int iiii));*)
 	      solve_sudoku_pb slp g nmatrix
 	    with 
 	      | MauvaisChoix -> 	      
-		print_string "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<ùmŝoghf\n";
-		newmatrix.(n).(snd (snd newpprim.(Array.length newpprim-1)))<-1.0;
-		let newslp = read_cplex ("prevention007-"^(string_of_int iiii)) in
-		set_message_level newslp 1;
-		use_presolver newslp true;
-		load_matrix newslp newmatrix;
-		set_row_bounds newslp n Fixed_var 0.0 0.0;
-		write_cplex newslp ("uberlastprevention007-"^(string_of_int iiii));
-		solve_sudoku_pb newslp g newmatrix
+		  print_string "<<<<<<<<<<<<<<<<<<<<<<<<   MAUVAISCHOIX   >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n"
+(*		  newmatrix.(n).(snd (snd newpprim.(Array.length newpprim-1)))<-0.0;
+		  let newslp = read_cplex ("prevention007-"^(string_of_int iiii)) in
+		    set_message_level newslp 1;
+		    use_presolver newslp true;
+		    load_matrix newslp newmatrix;
+		    write_cplex newslp ("uberlastprevention007-"^(string_of_int iiii));
+		    solve_sudoku_pb newslp g newmatrix*)
       end
 	
 
@@ -284,29 +282,40 @@ and teste n s l = match l with
   |x::m -> s.(n)<-x; sud_comb s; teste n s m
 
 
-
 let () =
-  let slp = make_2EZ_sudoku_pb "test.su" in
-    simplex slp;
-    branch_and_bound slp;
-    let prim = get_col_primals slp in
-      write_sudoku stdout prim;
-      print_newline()
-
-
-
-let () =
-  let (slp,g) = init_sudoku "test.su" in
+  let (slp,g) = init_sudoku "hard.su" in
     try
       solve_sudoku_pb slp g constr
     with
 	Solution(prim) ->
+	  print_string "Système D solution ... -> \n";
 	  write_sudoku stdout prim;
 	  print_newline()
 
+let () =
+  let slp = make_2EZ_sudoku_pb "hard.su" in
+    set_message_level slp 1;
+    let ti = Unix.gettimeofday() in
+      simplex slp;
+      branch_and_bound slp;
+      let temps = Unix.gettimeofday() -. ti in
+      let prim = get_col_primals slp in
+	print_string "MIP 2EZ solution !!! -> en ";
+	print_float temps;
+	print_newline();
+	write_sudoku stdout prim;
+	print_newline()
+
+
 let () = 
-  let y = read_sudoku_comb "test.su" in
-  try
-    sud_comb y
-  with
-      Solcomb -> write_sudoku_comb stdout y
+  let y = read_sudoku_comb "hard.su" in
+  let ti = Unix.gettimeofday() in
+    try
+      sud_comb y
+    with
+	Solcomb -> 
+	  print_string "Combinatory solution ... -> en ";
+	  let temps = Unix.gettimeofday() -. ti in
+	    print_float temps;
+	    print_newline();
+	    write_sudoku_comb stdout y
